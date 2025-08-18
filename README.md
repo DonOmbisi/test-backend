@@ -26,16 +26,16 @@ A Spring Boot application for processing student data with Excel generation, CSV
 
 ## ⚙️ Configuration
 
-### 1. Environment Variables
+### 1. Environment Setup
 
-Create a `.env` file in the root directory:
+**⚠️ IMPORTANT: Follow the security setup guide before running the application!**
 
-```bash
-SUPABASE_HOST=your-supabase-host.supabase.co
-SUPABASE_DB=postgres
-SUPABASE_USERNAME=postgres
-SUPABASE_PASSWORD=your-supabase-password
-```
+See [SETUP_ENVIRONMENT.md](SETUP_ENVIRONMENT.md) for detailed instructions on configuring environment variables securely.
+
+Quick setup:
+1. Copy the example environment file: `cp env.example .env`
+2. Edit `.env` with your actual database credentials
+3. Never commit the `.env` file to version control
 
 ### 2. Database Setup
 

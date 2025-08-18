@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/student_processor
-    username: postgres
-    password: 314159
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/student_processor}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -39,13 +39,13 @@ spring:
 app:
   file:
     storage:
-      windows: C:/var/log/applications/API/dataprocessing
-      linux: /var/log/applications/API/dataprocessing
+      windows: ${STORAGE_PATH_WINDOWS:C:/var/log/applications/API/dataprocessing}
+      linux: ${STORAGE_PATH_LINUX:/var/log/applications/API/dataprocessing}
       excel: excel
       csv: csv
 
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
   servlet:
     context-path: /api
   tomcat:
