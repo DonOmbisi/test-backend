@@ -1,0 +1,16 @@
+com\example\repository\StudentRepository.class
+com\example\dto\DataGenerationRequest.class
+com\example\dto\StudentDto.class
+com\example\controller\DataProcessingController.class
+com\example\config\DatabaseConnectionTest.class
+com\example\service\DatabaseService.class
+com\example\StudentDataProcessorApplication.class
+com\example\entity\Student.class
+com\example\controller\DatabaseController.class
+com\example\controller\DataGenerationController.class
+com\example\service\DataProcessingService.class
+com\example\service\DataGenerationService.class
+com\example\config\FileUploadConfig.class
+com\example\controller\ReportingController.class
+com\example\dto\ReportRequest.class
+com\example\service\ReportingService.class
