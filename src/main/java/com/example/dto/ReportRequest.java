@@ -1,10 +1,25 @@
 package com.example.dto;
 
 public class ReportRequest {
-    private Integer page = 0;
-    private Integer size = 20;
+    private Integer page;
+    private Integer size;
     private Long studentId;
     private String className;
+    
+    // Validation method
+    public boolean isValid() {
+        if (page != null && page < 0) return false;
+        if (size != null && size <= 0) return false;
+        if (studentId != null && studentId <= 0) return false;
+        return true;
+    }
+    
+    public String getValidationErrors() {
+        if (page != null && page < 0) return "Page must be non-negative";
+        if (size != null && size <= 0) return "Size must be positive";
+        if (studentId != null && studentId <= 0) return "Student ID must be positive";
+        return null;
+    }
 
     public ReportRequest() {}
 

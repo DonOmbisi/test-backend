@@ -26,14 +26,29 @@ public class DatabaseService {
         int totalSaved = 0;
         int batchSize = 1000;
         List<Student> batch = new ArrayList<>(batchSize);
+        int totalLines = 0;
+        int errorLines = 0;
 
         try (CSVReader reader = new CSVReader(new InputStreamReader(csvFile.getInputStream()))) {
             // Skip header row
-            reader.readNext();
+            String[] header = reader.readNext();
+            System.out.println("CSV Header: " + String.join(",", header));
+            System.out.println("Detected columns: " + header.length);
+            
+            if (header.length == 6) {
+                System.out.println("Expected format: studentId, firstName, lastName, DOB, className, score");
+            } else if (header.length >= 7) {
+                System.out.println("Detected format: studentId, firstName, lastName, age, email, className, score, year");
+                System.out.println("Note: Converting age to approximate birth year, ignoring email and year fields");
+            } else {
+                System.out.println("Warning: Unexpected column count. Expected 6 or 7+ columns.");
+            }
             
             String[] line;
             while ((line = reader.readNext()) != null) {
-                if (line.length >= 6) {
+                totalLines++;
+                
+                if (line.length >= 7) { // Expect 7 columns: id, firstName, lastName, age, email, className, score, year
                     try {
                         Student student = new Student();
                         
@@ -41,11 +56,17 @@ public class DatabaseService {
                         student.setStudentId(Long.parseLong(line[0]));
                         student.setFirstName(line[1]);
                         student.setLastName(line[2]);
-                        student.setDob(LocalDate.parse(line[3], DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-                        student.setClassName(line[4]);
+                        
+                        // Handle age field (convert to approximate birth year)
+                        int age = Integer.parseInt(line[3]);
+                        int currentYear = LocalDate.now().getYear();
+                        int birthYear = currentYear - age;
+                        student.setDob(LocalDate.of(birthYear, 1, 1)); // Use January 1st as default
+                        
+                        student.setClassName(line[5]); // className is at index 5
                         
                         // Update score by +5 (as per requirements: CSV score + 5 = Database score)
-                        int originalScore = Integer.parseInt(line[5]);
+                        int originalScore = Integer.parseInt(line[6]); // score is at index 6
                         student.setScore(originalScore + 5);
                         
                         batch.add(student);
@@ -58,9 +79,39 @@ public class DatabaseService {
                         }
                     } catch (NumberFormatException | DateTimeParseException e) {
                         // Log error but continue processing other records
-                        System.err.println("Error parsing line: " + String.join(",", line) + " - " + e.getMessage());
+                        errorLines++;
+                        System.err.println("Error parsing line " + totalLines + ": " + String.join(",", line) + " - " + e.getMessage());
                         continue;
                     }
+                } else if (line.length >= 6) {
+                    // Fallback for 6-column format (id, firstName, lastName, dob, className, score)
+                    try {
+                        Student student = new Student();
+                        
+                        student.setStudentId(Long.parseLong(line[0]));
+                        student.setFirstName(line[1]);
+                        student.setLastName(line[2]);
+                        student.setDob(LocalDate.parse(line[3], DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        student.setClassName(line[4]);
+                        
+                        int originalScore = Integer.parseInt(line[5]);
+                        student.setScore(originalScore + 5);
+                        
+                        batch.add(student);
+                        
+                        if (batch.size() >= batchSize) {
+                            studentRepository.saveAll(batch);
+                            totalSaved += batch.size();
+                            batch.clear();
+                        }
+                    } catch (NumberFormatException | DateTimeParseException e) {
+                        errorLines++;
+                        System.err.println("Error parsing line " + totalLines + ": " + String.join(",", line) + " - " + e.getMessage());
+                        continue;
+                    }
+                } else {
+                    errorLines++;
+                    System.err.println("Skipping line " + totalLines + " (insufficient columns): " + String.join(",", line));
                 }
             }
             
@@ -70,6 +121,12 @@ public class DatabaseService {
                 totalSaved += batch.size();
             }
         }
+
+        System.out.println("CSV Processing Summary:");
+        System.out.println("Total lines processed: " + totalLines);
+        System.out.println("Lines with errors: " + errorLines);
+        System.out.println("Successfully saved: " + totalSaved);
+        System.out.println("Success rate: " + String.format("%.2f%%", (double)(totalLines - errorLines) / totalLines * 100));
 
         return totalSaved;
     }

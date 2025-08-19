@@ -1,9 +1,9 @@
 spring:
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/student_processor}
-    username: ${DATABASE_USERNAME:postgres}
+    url: ${DATABASE_URL:jdbc:h2:mem:testdb}
+    username: ${DATABASE_USERNAME:sa}
     password: ${DATABASE_PASSWORD:}
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
@@ -13,10 +13,10 @@ spring:
       leak-detection-threshold: 60000
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: ${HIBERNATE_DIALECT:org.hibernate.dialect.H2Dialect}
         format_sql: true
         jdbc:
           time_zone: UTC
@@ -35,6 +35,10 @@ spring:
       max-request-size: 100MB
       file-size-threshold: 2KB
       location: ${java.io.tmpdir}
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 
 app:
   file:

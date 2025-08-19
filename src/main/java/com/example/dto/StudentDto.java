@@ -1,20 +1,16 @@
 package com.example.dto;
 
-import java.time.LocalDate;
-
 public class StudentDto {
     private Long studentId;
     private String firstName;
     private String lastName;
-    private LocalDate dob;
+    private String dob;
     private String className;
     private Integer score;
 
-    // Default constructor
     public StudentDto() {}
 
-    // Constructor with all fields
-    public StudentDto(Long studentId, String firstName, String lastName, LocalDate dob, String className, Integer score) {
+    public StudentDto(Long studentId, String firstName, String lastName, String dob, String className, Integer score) {
         this.studentId = studentId;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -23,7 +19,6 @@ public class StudentDto {
         this.score = score;
     }
 
-    // Getters and Setters
     public Long getStudentId() {
         return studentId;
     }
@@ -48,11 +43,11 @@ public class StudentDto {
         this.lastName = lastName;
     }
 
-    public LocalDate getDob() {
+    public String getDob() {
         return dob;
     }
 
-    public void setDob(LocalDate dob) {
+    public void setDob(String dob) {
         this.dob = dob;
     }
 

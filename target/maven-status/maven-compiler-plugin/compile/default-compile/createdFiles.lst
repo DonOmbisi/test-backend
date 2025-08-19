@@ -1,8 +1,10 @@
 com\example\repository\StudentRepository.class
 com\example\dto\DataGenerationRequest.class
 com\example\dto\StudentDto.class
+com\example\config\EnvironmentConfig.class
 com\example\controller\DataProcessingController.class
 com\example\config\DatabaseConnectionTest.class
+com\example\controller\GlobalExceptionHandler.class
 com\example\service\DatabaseService.class
 com\example\StudentDataProcessorApplication.class
 com\example\entity\Student.class

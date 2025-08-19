@@ -37,6 +37,9 @@ public class DataProcessingService {
 
         // Generate CSV filename
         String originalFilename = excelFile.getOriginalFilename();
+        if (originalFilename == null || originalFilename.trim().isEmpty()) {
+            originalFilename = "uploaded_file.xlsx";
+        }
         String csvFileName = originalFilename.replaceAll("\\.xlsx?$", ".csv");
         Path csvFilePath = csvPath.resolve(csvFileName);
 
@@ -54,26 +57,92 @@ public class DataProcessingService {
                 if (row != null) {
                     StudentDto student = new StudentDto();
                     
-                    // Read student data from Excel
-                    student.setStudentId((long) row.getCell(0).getNumericCellValue());
-                    student.setFirstName(row.getCell(1).getStringCellValue());
-                    student.setLastName(row.getCell(2).getStringCellValue());
+                    // Read student data from Excel with proper cell type checking
+                    Cell idCell = row.getCell(0);
+                    if (idCell != null) {
+                        if (idCell.getCellType() == CellType.NUMERIC) {
+                            student.setStudentId((long) idCell.getNumericCellValue());
+                        } else {
+                            student.setStudentId(Long.parseLong(idCell.getStringCellValue()));
+                        }
+                    }
+                    
+                    Cell firstNameCell = row.getCell(1);
+                    if (firstNameCell != null) {
+                        if (firstNameCell.getCellType() == CellType.STRING) {
+                            student.setFirstName(firstNameCell.getStringCellValue());
+                        } else {
+                            student.setFirstName(String.valueOf(firstNameCell.getNumericCellValue()));
+                        }
+                    }
+                    
+                    Cell lastNameCell = row.getCell(2);
+                    if (lastNameCell != null) {
+                        if (lastNameCell.getCellType() == CellType.STRING) {
+                            student.setLastName(lastNameCell.getStringCellValue());
+                        } else {
+                            student.setLastName(String.valueOf(lastNameCell.getNumericCellValue()));
+                        }
+                    }
                     
                     // Handle date cell
                     Cell dateCell = row.getCell(3);
-                    if (dateCell.getCellType() == CellType.NUMERIC) {
-                        student.setDob(dateCell.getLocalDateTimeCellValue().toLocalDate());
+                    if (dateCell != null) {
+                        try {
+                            if (dateCell.getCellType() == CellType.NUMERIC) {
+                                student.setDob(dateCell.getLocalDateTimeCellValue().toLocalDate().toString());
+                            } else {
+                                // Parse string date with multiple format attempts
+                                String dateStr = dateCell.getStringCellValue();
+                                LocalDate parsedDate = null;
+                                
+                                // Try different date formats
+                                String[] dateFormats = {"yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "dd-MM-yyyy", "MM-dd-yyyy"};
+                                for (String format : dateFormats) {
+                                    try {
+                                        parsedDate = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern(format));
+                                        break;
+                                    } catch (Exception e) {
+                                        // Continue to next format
+                                    }
+                                }
+                                
+                                if (parsedDate != null) {
+                                    student.setDob(parsedDate.toString());
+                                } else {
+                                    // If no date format works, use a default date
+                                    student.setDob(LocalDate.now().toString());
+                                }
+                            }
+                        } catch (Exception e) {
+                            // If date parsing fails, use a default date
+                            student.setDob(LocalDate.now().toString());
+                        }
                     } else {
-                        // Parse string date
-                        String dateStr = dateCell.getStringCellValue();
-                        student.setDob(LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        // If no date cell, use a default date
+                        student.setDob(LocalDate.now().toString());
                     }
                     
-                    student.setClassName(row.getCell(4).getStringCellValue());
+                    Cell classNameCell = row.getCell(4);
+                    if (classNameCell != null) {
+                        if (classNameCell.getCellType() == CellType.STRING) {
+                            student.setClassName(classNameCell.getStringCellValue());
+                        } else {
+                            student.setClassName(String.valueOf(classNameCell.getNumericCellValue()));
+                        }
+                    }
                     
                     // Update score by +10
-                    int originalScore = (int) row.getCell(5).getNumericCellValue();
-                    student.setScore(originalScore + 10);
+                    Cell scoreCell = row.getCell(5);
+                    if (scoreCell != null) {
+                        int originalScore;
+                        if (scoreCell.getCellType() == CellType.NUMERIC) {
+                            originalScore = (int) scoreCell.getNumericCellValue();
+                        } else {
+                            originalScore = Integer.parseInt(scoreCell.getStringCellValue());
+                        }
+                        student.setScore(originalScore + 10);
+                    }
                     
                     students.add(student);
                 }
@@ -92,7 +161,7 @@ public class DataProcessingService {
                     String.valueOf(student.getStudentId()),
                     student.getFirstName(),
                     student.getLastName(),
-                    student.getDob().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                    student.getDob(),
                     student.getClassName(),
                     String.valueOf(student.getScore())
                 };

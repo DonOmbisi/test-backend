@@ -3,14 +3,16 @@ package com.example.controller;
 import com.example.entity.Student;
 import com.example.service.DatabaseService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/database")
@@ -19,6 +21,15 @@ public class DatabaseController {
 
     @Autowired
     private DatabaseService databaseService;
+
+    @Value("${spring.datasource.url}")
+    private String databaseUrl;
+    
+    @Value("${spring.datasource.username}")
+    private String databaseUsername;
+    
+    @Value("${spring.datasource.password}")
+    private String databasePassword;
 
     @PostMapping("/upload-csv")
     public ResponseEntity<Map<String, Object>> uploadCsvToDatabase(@RequestParam("file") MultipartFile file) {
@@ -100,5 +111,14 @@ public class DatabaseController {
             
             return ResponseEntity.internalServerError().body(response);
         }
+    }
+
+    @GetMapping("/config")
+    public Map<String, String> getDatabaseConfig() {
+        Map<String, String> config = new HashMap<>();
+        config.put("url", databaseUrl);
+        config.put("username", databaseUsername);
+        config.put("password", databasePassword != null ? "***" : "null");
+        return config;
     }
 }

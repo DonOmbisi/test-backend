@@ -1,8 +1,10 @@
 C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\config\DatabaseConnectionTest.java
+C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\config\EnvironmentConfig.java
 C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\config\FileUploadConfig.java
 C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\controller\DatabaseController.java
 C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\controller\DataGenerationController.java
 C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\controller\DataProcessingController.java
+C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\controller\GlobalExceptionHandler.java
 C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\controller\ReportingController.java
 C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\dto\DataGenerationRequest.java
 C:\Users\donmi\Downloads\test\backend\src\main\java\com\example\dto\ReportRequest.java
