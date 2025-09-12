@@ -13,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -21,7 +20,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/reports")
-@CrossOrigin(origins = "*")
 public class ReportingController {
 
     @Autowired
@@ -165,16 +163,26 @@ public class ReportingController {
     @GetMapping("/download/{fileName}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
         try {
+            // URL decode the filename first
+            String decodedFileName = java.net.URLDecoder.decode(fileName, "UTF-8");
+            
             // Extract just the filename from the path
-            String actualFileName = fileName;
-            if (fileName.contains("/")) {
-                actualFileName = fileName.substring(fileName.lastIndexOf("/") + 1);
-            } else if (fileName.contains("\\")) {
-                actualFileName = fileName.substring(fileName.lastIndexOf("\\") + 1);
+            String actualFileName = decodedFileName;
+            if (decodedFileName.contains("/")) {
+                actualFileName = decodedFileName.substring(decodedFileName.lastIndexOf("/") + 1);
+            } else if (decodedFileName.contains("\\")) {
+                actualFileName = decodedFileName.substring(decodedFileName.lastIndexOf("\\") + 1);
             }
+            
+            // Log for debugging
+            System.out.println("Original fileName: " + fileName);
+            System.out.println("Decoded fileName: " + decodedFileName);
+            System.out.println("Actual fileName: " + actualFileName);
             
             // Resolve the file path
             Path filePath = Paths.get(System.getProperty("user.dir"), "reports", actualFileName);
+            System.out.println("Looking for file at: " + filePath.toString());
+            
             Resource resource = new UrlResource(filePath.toUri());
             
             if (resource.exists() && resource.isReadable()) {
@@ -192,9 +200,12 @@ public class ReportingController {
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + actualFileName + "\"")
                     .body(resource);
             } else {
+                System.out.println("File not found or not readable: " + filePath.toString());
                 return ResponseEntity.notFound().build();
             }
-        } catch (MalformedURLException e) {
+        } catch (Exception e) {
+            System.out.println("Error in downloadFile: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }

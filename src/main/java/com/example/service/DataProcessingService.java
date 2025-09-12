@@ -1,9 +1,9 @@
 package com.example.service;
 
-import com.example.dto.StudentDto;
+import com.github.pjfanning.xlsx.StreamingReader;
 import com.opencsv.CSVWriter;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,8 +14,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public class DataProcessingService {
@@ -32,8 +30,8 @@ public class DataProcessingService {
     public String convertExcelToCsv(MultipartFile excelFile) throws IOException {
         // Create storage directory
         String storagePath = getStoragePath();
-        Path csvPath = Paths.get(storagePath, csvFolder);
-        Files.createDirectories(csvPath);
+        Path csvDir = Paths.get(storagePath, csvFolder);
+        Files.createDirectories(csvDir);
 
         // Generate CSV filename
         String originalFilename = excelFile.getOriginalFilename();
@@ -41,143 +39,133 @@ public class DataProcessingService {
             originalFilename = "uploaded_file.xlsx";
         }
         String csvFileName = originalFilename.replaceAll("\\.xlsx?$", ".csv");
-        Path csvFilePath = csvPath.resolve(csvFileName);
+        Path csvFilePath = csvDir.resolve(csvFileName);
 
-        List<StudentDto> students = new ArrayList<>();
+        // Precompile date formats
+        DateTimeFormatter isoFormatter = DateTimeFormatter.ISO_LOCAL_DATE;
+        DateTimeFormatter[] tryFormats = new DateTimeFormatter[]{
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                DateTimeFormatter.ofPattern("MM/dd/yyyy"),
+                DateTimeFormatter.ofPattern("dd-MM-yyyy")
+        };
+        DataFormatter dataFormatter = new DataFormatter();
 
-        // Read Excel file
-        try (InputStream inputStream = excelFile.getInputStream();
-             Workbook workbook = new XSSFWorkbook(inputStream)) {
-            
+        // Streaming read & write
+        try (InputStream is = new BufferedInputStream(excelFile.getInputStream(), 64 * 1024);
+             Workbook workbook = StreamingReader.builder()
+                     .rowCacheSize(100)   // rows kept in memory
+                     .bufferSize(4096)    // read buffer size
+                     .open(is);
+             BufferedWriter bw = Files.newBufferedWriter(csvFilePath);
+             CSVWriter csvWriter = new CSVWriter(bw)) {
+
             Sheet sheet = workbook.getSheetAt(0);
-            
-            // Skip header row, start from row 1
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row != null) {
-                    StudentDto student = new StudentDto();
-                    
-                    // Read student data from Excel with proper cell type checking
-                    Cell idCell = row.getCell(0);
-                    if (idCell != null) {
-                        if (idCell.getCellType() == CellType.NUMERIC) {
-                            student.setStudentId((long) idCell.getNumericCellValue());
-                        } else {
-                            student.setStudentId(Long.parseLong(idCell.getStringCellValue()));
-                        }
-                    }
-                    
-                    Cell firstNameCell = row.getCell(1);
-                    if (firstNameCell != null) {
-                        if (firstNameCell.getCellType() == CellType.STRING) {
-                            student.setFirstName(firstNameCell.getStringCellValue());
-                        } else {
-                            student.setFirstName(String.valueOf(firstNameCell.getNumericCellValue()));
-                        }
-                    }
-                    
-                    Cell lastNameCell = row.getCell(2);
-                    if (lastNameCell != null) {
-                        if (lastNameCell.getCellType() == CellType.STRING) {
-                            student.setLastName(lastNameCell.getStringCellValue());
-                        } else {
-                            student.setLastName(String.valueOf(lastNameCell.getNumericCellValue()));
-                        }
-                    }
-                    
-                    // Handle date cell
-                    Cell dateCell = row.getCell(3);
-                    if (dateCell != null) {
-                        try {
-                            if (dateCell.getCellType() == CellType.NUMERIC) {
-                                student.setDob(dateCell.getLocalDateTimeCellValue().toLocalDate().toString());
-                            } else {
-                                // Parse string date with multiple format attempts
-                                String dateStr = dateCell.getStringCellValue();
-                                LocalDate parsedDate = null;
-                                
-                                // Try different date formats
-                                String[] dateFormats = {"yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "dd-MM-yyyy", "MM-dd-yyyy"};
-                                for (String format : dateFormats) {
-                                    try {
-                                        parsedDate = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern(format));
-                                        break;
-                                    } catch (Exception e) {
-                                        // Continue to next format
-                                    }
-                                }
-                                
-                                if (parsedDate != null) {
-                                    student.setDob(parsedDate.toString());
-                                } else {
-                                    // If no date format works, use a default date
-                                    student.setDob(LocalDate.now().toString());
-                                }
-                            }
-                        } catch (Exception e) {
-                            // If date parsing fails, use a default date
-                            student.setDob(LocalDate.now().toString());
-                        }
-                    } else {
-                        // If no date cell, use a default date
-                        student.setDob(LocalDate.now().toString());
-                    }
-                    
-                    Cell classNameCell = row.getCell(4);
-                    if (classNameCell != null) {
-                        if (classNameCell.getCellType() == CellType.STRING) {
-                            student.setClassName(classNameCell.getStringCellValue());
-                        } else {
-                            student.setClassName(String.valueOf(classNameCell.getNumericCellValue()));
-                        }
-                    }
-                    
-                    // Update score by +10
-                    Cell scoreCell = row.getCell(5);
-                    if (scoreCell != null) {
-                        int originalScore;
-                        if (scoreCell.getCellType() == CellType.NUMERIC) {
-                            originalScore = (int) scoreCell.getNumericCellValue();
-                        } else {
-                            originalScore = Integer.parseInt(scoreCell.getStringCellValue());
-                        }
-                        student.setScore(originalScore + 10);
-                    }
-                    
-                    students.add(student);
-                }
-            }
-        }
 
-        // Write to CSV file
-        try (CSVWriter writer = new CSVWriter(new FileWriter(csvFilePath.toFile()))) {
             // Write header
-            String[] header = {"studentId", "firstName", "lastName", "DOB", "class", "score"};
-            writer.writeNext(header);
-            
-            // Write data rows
-            for (StudentDto student : students) {
-                String[] row = {
-                    String.valueOf(student.getStudentId()),
-                    student.getFirstName(),
-                    student.getLastName(),
-                    student.getDob(),
-                    student.getClassName(),
-                    String.valueOf(student.getScore())
-                };
-                writer.writeNext(row);
+            csvWriter.writeNext(new String[]{"studentId", "firstName", "lastName", "DOB", "class", "score"});
+
+            int rowNum = 0;
+            for (Row row : sheet) {
+                // skip header row in Excel
+                if (rowNum++ == 0) continue;
+
+                String[] out = new String[6];
+
+                // studentId
+                out[0] = safeGetString(row, 0, dataFormatter, String.valueOf(rowNum));
+
+                // firstName
+                out[1] = safeGetString(row, 1, dataFormatter, "");
+
+                // lastName
+                out[2] = safeGetString(row, 2, dataFormatter, "");
+
+                // DOB
+                out[3] = extractDateFast(row.getCell(3), dataFormatter, isoFormatter, tryFormats);
+
+                // class
+                out[4] = safeGetString(row, 4, dataFormatter, "");
+
+                // score (+10)
+                out[5] = computeScore(row.getCell(5), dataFormatter);
+
+                csvWriter.writeNext(out);
+
+                // Progress logging & flush every 100k rows
+                if (rowNum % 100_000 == 0) {
+                    System.out.println("Processed rows: " + rowNum);
+                    bw.flush();
+                }
             }
         }
 
         return csvFilePath.toString();
     }
 
+    // Helpers
+    private static String safeGetString(Row row, int idx, DataFormatter formatter, String defaultVal) {
+        Cell c = row.getCell(idx);
+        if (c == null) return defaultVal;
+        String s = formatter.formatCellValue(c);
+        return (s == null || s.trim().isEmpty()) ? defaultVal : s;
+    }
+
+    private static String extractDateFast(Cell dateCell, DataFormatter formatter,
+                                          DateTimeFormatter isoFormatter, DateTimeFormatter[] tryFormats) {
+        if (dateCell == null) return LocalDate.now().toString();
+        try {
+            if (DateUtil.isCellDateFormatted(dateCell)) {
+                return dateCell.getLocalDateTimeCellValue().toLocalDate().toString();
+            }
+            String dateStr = formatter.formatCellValue(dateCell).trim();
+            if (dateStr.isEmpty()) return LocalDate.now().toString();
+
+            if (dateStr.length() >= 10 && dateStr.charAt(4) == '-' && dateStr.charAt(7) == '-') {
+                return dateStr.substring(0, 10);
+            }
+            for (DateTimeFormatter f : tryFormats) {
+                try {
+                    LocalDate d = LocalDate.parse(dateStr, f);
+                    return d.toString();
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            // ignore, fallback below
+        }
+        return LocalDate.now().toString();
+    }
+
+    private static String computeScore(Cell scoreCell, DataFormatter formatter) {
+        if (scoreCell == null) return "70"; // default (60+10)
+        try {
+            if (scoreCell.getCellType() == CellType.NUMERIC) {
+                int val = (int) Math.round(scoreCell.getNumericCellValue());
+                return String.valueOf(val + 10);
+            } else {
+                String s = formatter.formatCellValue(scoreCell).trim();
+                if (s.isEmpty()) return "70";
+                int val = Integer.parseInt(s.replaceAll("[^0-9-]", ""));
+                return String.valueOf(val + 10);
+            }
+        } catch (Exception e) {
+            return "70";
+        }
+    }
+
+    private static boolean isDateCell(Cell cell) {
+        if (cell == null || cell.getCellType() != CellType.NUMERIC) {
+            return false;
+        }
+        // Simple heuristic: check if the cell format contains date-like patterns
+        String formatString = cell.getCellStyle().getDataFormatString();
+        return formatString != null && (
+            formatString.contains("d") || formatString.contains("m") || formatString.contains("y") ||
+            formatString.contains("h") || formatString.contains("s") || formatString.toLowerCase().contains("date")
+        );
+    }
+
     private String getStoragePath() {
         String os = System.getProperty("os.name").toLowerCase();
-        if (os.contains("win")) {
-            return windowsStoragePath;
-        } else {
-            return linuxStoragePath;
-        }
+        return os.contains("win") ? windowsStoragePath : linuxStoragePath;
     }
 }

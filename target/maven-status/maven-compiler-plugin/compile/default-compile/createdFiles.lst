@@ -1,5 +1,8 @@
+com\example\config\CorsConfig.class
 com\example\repository\StudentRepository.class
+com\example\controller\PerformanceController.class
 com\example\dto\DataGenerationRequest.class
+com\example\service\PerformanceMonitoringService.class
 com\example\dto\StudentDto.class
 com\example\config\EnvironmentConfig.class
 com\example\controller\DataProcessingController.class

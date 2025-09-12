@@ -57,7 +57,7 @@ Set the environment variables in your system:
 ```cmd
 set DATABASE_URL=jdbc:postgresql://localhost:5432/student_processor
 set DATABASE_USERNAME=postgres
-set DATABASE_PASSWORD=your_password
+set DATABASE_PASSWORD=postgres
 ```
 
 **Linux/Mac:**

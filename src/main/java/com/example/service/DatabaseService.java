@@ -6,6 +6,7 @@ import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -24,10 +25,13 @@ public class DatabaseService {
 
     public int uploadCsvToDatabase(MultipartFile csvFile) throws IOException, CsvValidationException {
         int totalSaved = 0;
-        int batchSize = 1000;
+        int batchSize = 5000; // Optimized batch size for 1M records
         List<Student> batch = new ArrayList<>(batchSize);
         int totalLines = 0;
         int errorLines = 0;
+        
+        // Disable auto-commit for better performance
+        System.out.println("Starting optimized CSV to database upload...");
 
         try (CSVReader reader = new CSVReader(new InputStreamReader(csvFile.getInputStream()))) {
             // Skip header row
@@ -52,8 +56,8 @@ public class DatabaseService {
                     try {
                         Student student = new Student();
                         
-                        // Parse student data from CSV
-                        student.setStudentId(Long.parseLong(line[0]));
+                        // Parse student data from CSV (skip studentId - let database auto-generate)
+                        // student.setStudentId(Long.parseLong(line[0])); // Skip this - let DB auto-generate
                         student.setFirstName(line[1]);
                         student.setLastName(line[2]);
                         
@@ -73,9 +77,18 @@ public class DatabaseService {
                         
                         // Save batch when it reaches the batch size
                         if (batch.size() >= batchSize) {
-                            studentRepository.saveAll(batch);
-                            totalSaved += batch.size();
+                            totalSaved += saveBatchOptimized(batch);
                             batch.clear();
+                            
+                            // Force garbage collection every 10 batches to prevent memory buildup
+                            if ((totalSaved / batchSize) % 10 == 0) {
+                                System.gc();
+                            }
+                            
+                            // Progress logging
+                            if (totalLines % 100000 == 0) {
+                                System.out.println("Processed " + totalLines + " lines, saved " + totalSaved + " records...");
+                            }
                         }
                     } catch (NumberFormatException | DateTimeParseException e) {
                         // Log error but continue processing other records
@@ -88,7 +101,7 @@ public class DatabaseService {
                     try {
                         Student student = new Student();
                         
-                        student.setStudentId(Long.parseLong(line[0]));
+                        // student.setStudentId(Long.parseLong(line[0])); // Skip this - let DB auto-generate
                         student.setFirstName(line[1]);
                         student.setLastName(line[2]);
                         student.setDob(LocalDate.parse(line[3], DateTimeFormatter.ofPattern("yyyy-MM-dd")));
@@ -100,9 +113,13 @@ public class DatabaseService {
                         batch.add(student);
                         
                         if (batch.size() >= batchSize) {
-                            studentRepository.saveAll(batch);
-                            totalSaved += batch.size();
+                            totalSaved += saveBatchOptimized(batch);
                             batch.clear();
+                            
+                            // Force garbage collection every 10 batches to prevent memory buildup
+                            if ((totalSaved / batchSize) % 10 == 0) {
+                                System.gc();
+                            }
                         }
                     } catch (NumberFormatException | DateTimeParseException e) {
                         errorLines++;
@@ -117,8 +134,7 @@ public class DatabaseService {
             
             // Save remaining records in the last batch
             if (!batch.isEmpty()) {
-                studentRepository.saveAll(batch);
-                totalSaved += batch.size();
+                totalSaved += saveBatchOptimized(batch);
             }
         }
 
@@ -137,5 +153,20 @@ public class DatabaseService {
 
     public List<Student> getAllStudents() {
         return studentRepository.findAll();
+    }
+    
+    // Optimized batch saving method with proper transaction management
+    @Transactional
+    public int saveBatchOptimized(List<Student> batch) {
+        try {
+            // Use saveAllAndFlush for immediate persistence
+            List<Student> savedStudents = studentRepository.saveAllAndFlush(batch);
+            return savedStudents.size();
+        } catch (Exception e) {
+            System.err.println("Batch save failed: " + e.getMessage());
+            // Don't attempt individual saves in case of batch failure
+            // This prevents connection issues
+            return 0;
+        }
     }
 }

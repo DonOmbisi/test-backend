@@ -1,22 +1,26 @@
 spring:
   datasource:
-    url: ${DATABASE_URL:jdbc:h2:mem:testdb}
-    username: ${DATABASE_USERNAME:sa}
-    password: ${DATABASE_PASSWORD:}
-    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/student_processor}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: ${DATABASE_DRIVER:org.postgresql.Driver}
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
+      maximum-pool-size: 20
+      minimum-idle: 10
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
       leak-detection-threshold: 60000
+      auto-commit: false
+      pool-name: StudentProcessorHikariCP
+      register-mbeans: true
+      connection-init-sql: SELECT 1
   jpa:
     hibernate:
       ddl-auto: create-drop
     properties:
       hibernate:
-        dialect: ${HIBERNATE_DIALECT:org.hibernate.dialect.H2Dialect}
+        dialect: ${HIBERNATE_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
         format_sql: true
         jdbc:
           time_zone: UTC
@@ -25,8 +29,13 @@ spring:
         order_inserts: true
         order_updates: true
         batch_fetch_style: DYNAMIC
+        generate_statistics: false
         connection:
+          provider_disables_autocommit: false
           characterEncoding: UTF-8
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
     show-sql: false
     open-in-view: false
   servlet:
